@@ -7,7 +7,7 @@ This file is part of warc
 :copyright: (c) 2012 Internet Archive
 """
 
-from collections import MutableMapping
+from collections.abc import MutableMapping
 
 
 class CaseInsensitiveDict(MutableMapping):
@@ -56,7 +56,7 @@ class FilePart:
         self.fileobj = fileobj
         self.length = length
         self.offset = 0
-        self.buf = ""
+        self.buf = b""
 
     def read(self, size=-1):
         if size == -1:
@@ -82,16 +82,16 @@ class FilePart:
     def readline(self):
         chunks = []
         chunk = self._read(1024)
-        while chunk and "\n" not in chunk:
+        while chunk and b"\n" not in chunk:
             chunks.append(chunk)
             chunk = self._read(1024)
 
-        if "\n" in chunk:
-            index = chunk.index("\n")
+        if b"\n" in chunk:
+            index = chunk.index(b"\n")
             self._unread(chunk[index+1:])
             chunk = chunk[:index+1]
         chunks.append(chunk)
-        return "".join(chunks)
+        return b"".join(chunks)
 
     def __iter__(self):
         line = self.readline()

@@ -1,5 +1,5 @@
 from ..utils import FilePart, CaseInsensitiveDict
-from io import StringIO
+from io import BytesIO
 
 class TestCaseInsensitiveDict:
     def test_all(self):
@@ -20,37 +20,37 @@ class TestCaseInsensitiveDict:
 class TestFilePart:
     def setup_method(self, m):
         # 5 chars in each line
-        self.text = "\n".join(["aaaa", "bbbb", "cccc", "dddd", "eeee", "ffff"])
+        self.text = b"\n".join([b"aaaa", b"bbbb", b"cccc", b"dddd", b"eeee", b"ffff"])
 
     def test_read(self):
-        part = FilePart(StringIO(self.text), 0)
-        assert part.read() == ""
+        part = FilePart(BytesIO(self.text), 0)
+        assert part.read() == b""
 
-        part = FilePart(StringIO(self.text), 5)
-        assert part.read() == "aaaa\n"
+        part = FilePart(BytesIO(self.text), 5)
+        assert part.read() == b"aaaa\n"
 
-        part = FilePart(StringIO(self.text), 10)
-        assert part.read() == "aaaa\nbbbb\n"
+        part = FilePart(BytesIO(self.text), 10)
+        assert part.read() == b"aaaa\nbbbb\n"
 
         # try with large data
-        part = FilePart(StringIO("a" * 10000), 10)
+        part = FilePart(BytesIO(b"a" * 10000), 10)
         assert len(part.read()) == 10
 
     def test_read_with_size(self):
-        part = FilePart(StringIO(self.text), 10)
-        assert part.read(3) == "aaa"
-        assert part.read(3) == "a\nb"
-        assert part.read(3) == "bbb"
-        assert part.read(3) == "\n"
-        assert part.read(3) == ""
+        part = FilePart(BytesIO(self.text), 10)
+        assert part.read(3) == b"aaa"
+        assert part.read(3) == b"a\nb"
+        assert part.read(3) == b"bbb"
+        assert part.read(3) == b"\n"
+        assert part.read(3) == b""
 
     def test_readline(self):
-        part = FilePart(StringIO(self.text), 11)
-        assert part.readline() == "aaaa\n"
-        assert part.readline() == "bbbb\n"
-        assert part.readline() == "c"
-        assert part.readline() == ""
+        part = FilePart(BytesIO(self.text), 11)
+        assert part.readline() == b"aaaa\n"
+        assert part.readline() == b"bbbb\n"
+        assert part.readline() == b"c"
+        assert part.readline() == b""
 
     def test_iter(self):
-        part = FilePart(StringIO(self.text), 11)
-        assert list(part) == ["aaaa\n", "bbbb\n", "c"]
+        part = FilePart(BytesIO(self.text), 11)
+        assert list(part) == [b"aaaa\n", b"bbbb\n", b"c"]

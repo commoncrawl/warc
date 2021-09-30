@@ -1,6 +1,6 @@
 """Enhanced gzip library to support multiple member gzip files.
 
-GZIP has an interesting property that contatination of mutliple gzip files is a valid gzip file.
+GZIP has an interesting property that concatenation of multiple gzip files is a valid gzip file.
 In other words, a gzip file can have multiple members, each individually gzip
 compressed. The members simply appear one after another in the file, with no
 additional information before, between, or after them.
@@ -23,27 +23,24 @@ class GzipFile(BaseGzipFile):
     """GzipFile with support for multi-member gzip files.
     """
     def __init__(self, filename=None, mode=None,
-                 compresslevel=9, fileobj=None):
-        BaseGzipFile.__init__(self,
-            filename=filename,
-            mode=mode,
-            compresslevel=compresslevel,
-            fileobj=fileobj)
+                 compresslevel=9, fileobj=None, mtime=None):
+        BaseGzipFile.__init__(self, filename=filename, mode=mode,
+                              compresslevel=compresslevel, fileobj=fileobj,
+                              mtime=mtime)
+        self.compresslevel = compresslevel
 
+        self.new_member = True
         if self.mode == WRITE:
             # Indicates the start of a new member if value is True.
             # The BaseGzipFile constructor already wrote the header for new
             # member, so marking as False.
-            self._new_member = False
-
-        # When _member_lock is True, only one member in gzip file is read
-        self._member_lock = False
+            self.new_member = False
 
     def close_member(self):
         """Closes the current member being written.
         """
         # The new member is not yet started, no need to close
-        if self._new_member:
+        if self.new_member:
             return
 
         self.fileobj.write(self.compress.flush())
@@ -51,20 +48,20 @@ class GzipFile(BaseGzipFile):
         # self.size may exceed 2GB, or even 4GB
         write32u(self.fileobj, self.size & 0xffffffff)
         self.size = 0
-        self.compress = zlib.compressobj(9,
+        self.compress = zlib.compressobj(self.compresslevel,
                                          zlib.DEFLATED,
                                          -zlib.MAX_WBITS,
                                          zlib.DEF_MEM_LEVEL,
                                          0)
-        self._new_member = True
+        self.new_member = True
 
     def _start_member(self):
         """Starts writing a new member if required.
         """
-        if self._new_member:
+        if self.new_member:
             self._init_write(self.name)
-            self._write_gzip_header()
-            self._new_member = False
+            self._write_gzip_header(self.compresslevel)
+            self.new_member = False
 
     def write(self, data):
         self._start_member()
@@ -85,37 +82,19 @@ class GzipFile(BaseGzipFile):
             self.myfileobj.close()
             self.myfileobj = None
 
-    def _read(self, size):
-        # Treat end of member as end of file when _member_lock flag is set
-        if self._member_lock and self._new_member:
-            raise EOFError()
-        else:
-            return BaseGzipFile._read(self, size)
-
     def read_member(self):
         """Returns a file-like object to read one member from the gzip file.
         """
-        if self._member_lock is False:
-            self._member_lock = True
-
-        if not self._new_member:
+        if not self.new_member:
             # the reader is in one of two possible states:
             #  1. reached EOF
             #  2. reached exactly the end of a Gzip member but not yet EOF
             # Try to read 10 bytes (footer and Gzip magic number) to either
             #  - trigger an EOFError or
-            #  - start the next member which also sets the "new member" state.
+            #  - start the next member
             try:
-                BaseGzipFile._read(self, 10)
-                assert self._new_member is True
-            except EOFError:
-                return None
-
-        if self._new_member:
-            try:
-                # Read one byte to move to the next member
-                BaseGzipFile._read(self, 1)
-                assert self._new_member is False
+                BaseGzipFile.read(self, 10)
+                self.new_member = True
             except EOFError:
                 return None
 
